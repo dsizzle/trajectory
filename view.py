@@ -1,19 +1,8 @@
 import math
-#import pandas as pd
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-# cl = {'13.7': [-0.06268752565831914,0.055642777549703815,0.34289220573573387,0.3912245616092897,0.40737082869039926,0.4861527183156411]
-#      ,'21.6': [0.11171661486129825, 0.1589027036537446, 0.3184203272535334, 0.36117969620550106, 0.38180898481027503,0.4529329658084568]
-#      ,'29.9': [0.17064952202216876, 0.23448771333059615, 0.2906328074599729, 0.3311911324848981, 0.3474218520907863, 0.39066330420503176]
-#      ,'38.4': [0.13164565128144956, 0.18782593396281733, 0.23167878716790796, 0.2767271714268958, 0.3074159873321211, 0.3483684241393465]
-#      ,'46.9': [0.1667647058823527, 0.12731394053134704, 0.20291038648759585, 0.23234736965573854, 0.26519852208081623, 0.3106128672805114]
-#      ,'55.2': [0.1162101929505599, 0.1455697613043222, 0.17845962113658997, 0.20681367661720707, 0.23408480441029833, 0.27395783238519716]
-#      ,'63.1': [0.11398803589232298, 0.1400108498035304, 0.16513019764236692, 0.1890329012961115, 0.21630754794440193, 0.25287197231833886]
-#      ,'71.9': [0.11619611752976344, 0.13446601372353506, 0.15290481496686392, 0.1756999589466891, 0.1963046155650694, 0.23286552108380731]
-#      ,'80.2': [0.10731452700721356, 0.12563368717377266, 0.14624186264735206, 0.16458213594510585, 0.18408627059996463, 0.21619582429183026]
-#      ,'89.1': [0.10955779719664527, 0.12563368717377266, 0.14402322444431392, 0.15457187261744154, 0.17186440677966086, 0.20286991965280599]}
-# cldf = pd.DataFrame(data=cl,index=['1011.55','1881.78','2799.63','3673.1','4603.46','6184.94'])
+M_TO_YDS = 1.09361
 
 class Canvas(QtWidgets.QFrame):
     def __init__(self, parent):
@@ -23,6 +12,8 @@ class Canvas(QtWidgets.QFrame):
         self.__bg_brush = QtGui.QBrush(self.__bg_color, QtCore.Qt.SolidPattern)
         self.__pen = QtGui.QPen(QtGui.QColor(255, 128, 128), 2, QtCore.Qt.SolidLine)
         self.__pen2 = QtGui.QPen(QtGui.QColor(128, 128, 255), 2, QtCore.Qt.SolidLine)
+        self.__grayPen = QtGui.QPen(QtGui.QColor(128, 128, 128), 1, QtCore.Qt.SolidLine)
+        self.__grayPen2 = QtGui.QPen(QtGui.QColor(160, 160, 160), 1, QtCore.Qt.SolidLine)
         self.__parent = parent
 
         self.angle = 0.0
@@ -51,7 +42,7 @@ class Canvas(QtWidgets.QFrame):
 
         print("init: ")
         print(v0, math.degrees(launch_angle), self.spin)
-        (hit_angle, v, cur_spin) = self.__launch(traj, v0, launch_angle, self.spin)
+        (hit_angle, v, cur_spin, carry, height) = self.__launch(traj, v0, launch_angle, self.spin)
         print("hit: ")
         print(v, math.degrees(hit_angle), cur_spin)
         hit_angle_from_horiz = (math.pi/2.) + hit_angle
@@ -59,11 +50,11 @@ class Canvas(QtWidgets.QFrame):
         print("1st bounce: ")
         print(v2, math.degrees(rebound_angle), new_spin)
         rebound_from_horiz = (math.pi/2.) - rebound_angle
-        (hit_angle, v, cur_spin) = self.__launch(traj, v2, rebound_from_horiz, new_spin, False, False)#, False, False)
+        (hit_angle, v, cur_spin, x, y) = self.__launch(traj, v2, rebound_from_horiz, new_spin, False, False)#, False, False)
         hit_angle_from_horiz = (math.pi/2.) + hit_angle
         (rebound_angle, v2, new_spin) = self.__bounce3(v, hit_angle_from_horiz, cur_spin)
         rebound_from_horiz = (math.pi/2.) - rebound_angle
-        (hit_angle, v, cur_spin) = self.__launch(traj, v2, rebound_from_horiz, new_spin, False, False)
+        (hit_angle, v, cur_spin, x, y) = self.__launch(traj, v2, rebound_from_horiz, new_spin, False, False)
         
         # (rebound_angle, v2, new_spin) = self.__bounce(v, -hit_angle, cur_spin)
 
@@ -81,7 +72,9 @@ class Canvas(QtWidgets.QFrame):
             self.__paintPath.lineTo(point.x()*2, botY-point.y()*2)
 
         self.repaint()
-
+        self.__parent.parent().distanceField.setText(str(carry*M_TO_YDS))
+        self.__parent.parent().heightField.setText(str(height*M_TO_YDS))
+        
         # self.mu = 0.4
         # print("=================================")
         # (rebound_angle, v2, new_spin) = self.__bounce3(18.6, math.radians(44.4), 4621)
@@ -97,38 +90,6 @@ class Canvas(QtWidgets.QFrame):
         # print("+++++++++++++++++++++++++++++++++")
         # wr = 1000 * 60. / (2. * math.pi)
         # (rebound_angle, v2, new_spin) = self.__bounce3(23.8, math.radians(34.0), wr)
-
-    # def __find_nearest(self,velocity,spin):
-    #     LowSpin = 0
-    #     HighSpin = 6200
-    #     LowVel = 0
-    #     HighVel = 90
-
-    #     for values in cldf.index:
-    #         if spin > values:
-    #             LowSpin = values
-    #         if spin < values and values < HighSpin:
-    #             HighSpin = values
-
-    #     for elements in cldf.columns:
-    #         if velocity > elements:
-    #             LowVel = elements
-    #         if velocity < elements and elements < HighVel:
-    #             HighVel = elements
-
-    #     return LowSpin,HighSpin,LowVel,HighVel
-
-    # def __interpolate(self, velocity, spin):
-    #     y1,y2,x1,x2 = find_nearest(velocity,spin)
-    #     f11 = cldf[x1][y1]
-    #     f12 = cldf[x1][y2]
-    #     f21 = cldf[x2][y1]
-    #     f22 = cldf[x2][y2]
-
-    #     return (1/((x2-x1)*(y2-y1))) * ( f11*(x2-velocity)*(y2-spin) + f21*(velocity-x1)*(y2-spin)
-    #                                 + f12*(x2-velocity)*(spin-y1) + f22*(velocity-x1)*(spin-y1))
-
-
 
     def __bounce2(self, v, in_angle, spin_rate):
         e = .120
@@ -288,15 +249,7 @@ class Canvas(QtWidgets.QFrame):
 
             f_drag_lift = .5 * self.air_density*self.ball_xsect*v2
         
-            #c_drag = self.__drag(Re, spin_ratio)
-            #print(Re, c_drag)
-            #c_drag = self.cd + (.25 * spin_ratio)
             c_drag = 21.12/Re + 6.3/math.sqrt(Re) + self.cd
-            #print (c_drag)
-            #c_drag = c_drag - (spin_ratio/1000.)
-            #print (c_drag)
-            #print ("-")
-            #print(Re, c_drag, cd2)
             accel_drag = f_drag_lift * c_drag #/ self.mass
 
             if not drag:
@@ -355,7 +308,7 @@ class Canvas(QtWidgets.QFrame):
         print ("distance: ", dist, "max height:", y_max)
         print ("spin0: ", spin0, "final spin:", spin_t)
 
-        return angle, v, spin_t*60./(2.*math.pi)
+        return angle, v, spin_t*60./(2.*math.pi), dist, y_max
 
     def resizeEvent(self, event):
         self.repaint()
@@ -370,6 +323,18 @@ class Canvas(QtWidgets.QFrame):
         dc.eraseRect(self.frameRect())
         dc.save()
     
+        botY = self.frameRect().bottom()
+        topY = self.frameRect().top()
+
+        dc.setPen(self.__grayPen)
+        for i in range(0, 12):
+            dc.drawLine(i*50, botY, i*50, topY)
+
+        dc.setPen(self.__grayPen2)
+        for i in range(0, 6):
+            dc.drawLine(i*100, botY, i*100, topY)
+
+        #dc.moveTo()
         dc.strokePath(self.__paintPath, self.__pen2)
     
         dc.restore()
