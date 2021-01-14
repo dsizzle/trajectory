@@ -90,10 +90,10 @@ class MainInterface(QtWidgets.QMainWindow, main_ui.Ui_MainWindow):
             event.ignore()
 
     def updateForceMph(self, value):
-        ui = self.__parent.getUI()
-        v0 = value * ui.frame.contact_t / ui.frame.mass
-        self.mpsSpinBox.setValue(v0)
-        self.mphSpinBox.setValue(v0 / .44704)
+        if hasattr(self.__parent, 'contact_t'):
+            v0 = value * self.__parent.contact_t / self.__parent.mass
+            self.mpsSpinBox.setValue(v0)
+            self.mphSpinBox.setValue(v0 / .44704)
 
     def updateSettings(self, index):
         itemData = self.clubComboBox.currentData(QtCore.Qt.UserRole) 
