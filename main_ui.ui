@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>816</width>
-    <height>360</height>
+    <width>810</width>
+    <height>413</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -39,7 +39,7 @@
       <x>560</x>
       <y>2</y>
       <width>245</width>
-      <height>308</height>
+      <height>362</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -182,12 +182,22 @@
        <item>
         <widget class="QLabel" name="label_5">
          <property name="text">
-          <string>Dimples</string>
+          <string>Side Spin</string>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QDoubleSpinBox" name="dimplesSpinBox"/>
+        <widget class="QDoubleSpinBox" name="sideSpinSpinBox">
+         <property name="decimals">
+          <number>0</number>
+         </property>
+         <property name="minimum">
+          <double>-10000.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>10000.000000000000000</double>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
@@ -270,6 +280,60 @@
       </layout>
      </item>
      <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_9">
+       <item>
+        <widget class="QLabel" name="cdSpinBoxLabel_4">
+         <property name="text">
+          <string>Wind Velocity</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QDoubleSpinBox" name="windSpeedSpinBox">
+         <property name="maximum">
+          <double>5000.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>1.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_10">
+       <item>
+        <widget class="QLabel" name="cdSpinBoxLabel_5">
+         <property name="text">
+          <string>Wind Direction</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QDoubleSpinBox" name="windDirSpinBox">
+         <property name="wrapping">
+          <bool>true</bool>
+         </property>
+         <property name="decimals">
+          <number>0</number>
+         </property>
+         <property name="maximum">
+          <double>359.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>1.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
       <widget class="QPushButton" name="pushButton">
        <property name="text">
         <string>Go</string>
@@ -286,26 +350,26 @@
      <item>
       <widget class="QLabel" name="distanceField">
        <property name="text">
-        <string>TextLabel</string>
+        <string>Distance</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QLabel" name="heightField">
        <property name="text">
-        <string>TextLabel</string>
+        <string>Height</string>
        </property>
       </widget>
      </item>
     </layout>
    </widget>
-   <widget class="Canvas" name="frame_2">
+   <widget class="Canvas2" name="frame_2">
     <property name="geometry">
      <rect>
       <x>1</x>
       <y>160</y>
       <width>550</width>
-      <height>150</height>
+      <height>211</height>
      </rect>
     </property>
     <property name="autoFillBackground">
@@ -324,7 +388,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>816</width>
+     <width>810</width>
      <height>15</height>
     </rect>
    </property>
@@ -334,6 +398,12 @@
  <customwidgets>
   <customwidget>
    <class>Canvas</class>
+   <extends>QFrame</extends>
+   <header>view</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>Canvas2</class>
    <extends>QFrame</extends>
    <header>view</header>
    <container>1</container>
