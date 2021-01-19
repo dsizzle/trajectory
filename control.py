@@ -26,6 +26,7 @@ class MainController(object):
         self.angle = 0.0
         self.force = 0.0    #N  = kg*m/s^2
         self.spin = 4000.0 #rpm
+        self.side_spin = 0.0
         self.gravity = 0.0
         self.mass = 0.0459   #kg
         self.contact_t = .0005  #time of contact
@@ -69,18 +70,11 @@ class MainController(object):
         print("GO")
         print(self.__ui.angleSpinBox.value())
 
-        # self.__ui.frame.angle = self.__ui.angleSpinBox.value()
-        # self.__ui.frame.force = self.__ui.forceSpinBox.value()
-        # self.__ui.frame.spin = self.__ui.spinSpinBox.value()
-        # self.__ui.frame.gravity = self.__ui.gravitySpinBox.value()
-        # self.__ui.frame.cd = self.__ui.cdSpinBox.value()
-        # self.__ui.frame.liftFactor = self.__ui.factorSpinBox.value()
-        # self.__ui.frame.mu = self.__ui.muSpinBox.value()
-
         self.__ui.frame.clear = False
         traj = self.hit() #repaint()
         
         self.__ui.frame.setPath(traj)
+        self.__ui.frame_2.setPath(traj)
         self.__ui.repaint()
         #self.__ui.frame_2.hit() 
 
@@ -96,11 +90,12 @@ class MainController(object):
         self.force = self.__ui.forceSpinBox.value()
         self.spin = self.__ui.spinSpinBox.value()
         self.gravity = self.__ui.gravitySpinBox.value()
+        self.side_spin = self.__ui.sideSpinSpinBox.value()
         self.cd = self.__ui.cdSpinBox.value()
         self.liftFactor = self.__ui.factorSpinBox.value()
         self.mu = self.__ui.muSpinBox.value()
 
-        traj = [QtCore.QPointF(0.0, 0.0)]
+        traj = [QtGui.QVector3D(0.0, 0.0, 0.0)]
 
         moment_chg = self.force * self.contact_t
         v0 = moment_chg / self.mass 
@@ -108,7 +103,7 @@ class MainController(object):
 
         print("init: ")
         print(v0, math.degrees(launch_angle), self.spin)
-        (hit_angle, v, cur_spin, carry, height) = self.__launch(traj, v0, launch_angle, self.spin)
+        (hit_angle, v, cur_spin, carry, height) = self.__launch(traj, v0, launch_angle, self.spin, self.side_spin)
         print("hit: ")
         print(v, math.degrees(hit_angle), cur_spin)
         hit_angle_from_horiz = (math.pi/2.) + hit_angle
@@ -268,44 +263,50 @@ class MainController(object):
 
         return c_d
 
-    def __launch(self, traj, v0, angle, spin_rate, lift=True, drag=True):
+    def __launch(self, traj, v0, angle, spin_rate, side_spin_rate=0, lift=True, drag=True):
         x = traj[-1].x()
-        y = traj[-1].y()  
+        y = traj[-1].y()
+        z = traj[-1].z()  
 
         spin0 = 2.*math.pi*spin_rate/60.  
+        spin_s0 = 2.*math.pi*side_spin_rate/60.
 
         v0x = v0 * math.cos(angle)
         v0y = v0 * math.sin(angle)
+        v0z = 0
+
         a0x = 0
         a0y = self.gravity
+        a0z = 0
 
         vx = v0x
         vy = v0y
+        vz = v0z
+
         ax = a0x
         ay = a0y
+        az = a0z
+
         t = 0
         spin_t = spin0
+        spin_s_t = spin_s0
+
         y_max = 0
         in_air = True
         dist = x
         
         while in_air:
-            v2 = vx * vx + vy * vy
+            v2 = vx * vx + vy * vy + vz * vz
             v = math.sqrt(v2)
             Re = (self.air_density * v * (self.radius + self.radius))/self.air_visc
             
             spin_t = spin0-(.00002)*(spin_t*v/self.radius)*t
-            
+            spin_s_t = spin_s0-(.00002)*(spin_s_t*v/self.radius)*t
+                
             #print(Re)
             #spin_t = spin0 * math.exp(-t/30.)
             spin_ratio = abs(float(self.radius*spin_t/v))
-            
-            try:
-                Cl = self.__interpolate(v,spin_t)
-                Cd = self.__interpolate(v,spin_t)
-            except:
-                Cl = 0.3
-                Cd = 0.3
+            spin_s_ratio = abs(float(self.radius*spin_s_t/v))
 
             f_drag_lift = .5 * self.air_density*self.ball_xsect*v2
         
@@ -317,32 +318,44 @@ class MainController(object):
 
             accel_dragx = accel_drag * math.cos(angle) / self.mass
             accel_dragy = accel_drag * math.sin(angle) / self.mass
-            
-            c_lift = .05+math.sqrt(.0025+self.liftFactor*spin_ratio)
+            accel_dragz = 0
+
+            c_lift = -.05+math.sqrt(.0025+self.liftFactor*spin_ratio)
+            c_s_lift = -.05+math.sqrt(.0025+self.liftFactor*spin_s_ratio)
+            print (">", c_s_lift)
             #c_lift = -3.25*spin_ratio*spin_ratio + 1.99*spin_ratio
             
             accel_lift = f_drag_lift * c_lift #/ self.mass
-            
+            accel_s_lift = f_drag_lift * c_s_lift
+
             if spin_rate < 0:
                 accel_lift = 0 - accel_lift
+
+            if side_spin_rate < 0:
+                accel_s_lift = 0 - accel_s_lift
 
             if not lift:
                 accel_lift = 0
 
             accel_liftx = accel_lift * math.cos(angle) / self.mass
             accel_lifty = accel_lift * math.sin(angle) / self.mass
-            
+            accel_liftz = accel_s_lift / self.mass
+            print(accel_liftz)
             ax = a0x - accel_dragx - accel_lifty
             ay = a0y - accel_dragy + accel_liftx
+            az = a0z - accel_dragz - accel_liftz
 
             vx = vx + self.__t_step * ax
             vy = vy + self.__t_step * ay       
-
+            vz = vz + self.__t_step * az
             xl = x
             yl = y
+            zl = z
+
             x = x + self.__t_step * vx
             y = y + self.__t_step * vy
-            
+            z = z + self.__t_step * vz
+
             if y < 0:
                 in_air = False
                 y = 0
@@ -351,13 +364,14 @@ class MainController(object):
 
             dx = xl - x
             dy = yl - y
-            
+            dz = zl - z
+
             if dx == 0:
                 dx = 0.00001
 
             angle = math.atan(dy/dx)
 
-            traj.append(QtCore.QPointF(x, y))
+            traj.append(QtGui.QVector3D(x, y, z))
             
             if y > y_max:
                 y_max = y
