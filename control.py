@@ -90,35 +90,60 @@ class MainController(object):
         self.force = self.__ui.forceSpinBox.value()
         self.spin = self.__ui.spinSpinBox.value()
         self.gravity = self.__ui.gravitySpinBox.value()
-        self.side_spin = self.__ui.sideSpinSpinBox.value()
+        self.aoa = self.__ui.aoaSpinBox.value()
+        self.loft = self.__ui.loftSpinBox.value()
+        self.faceAngle = self.__ui.faceAngleSpinBox.value()
+        self.pathAngle = self.__ui.pathAngleSpinBox.value()
+        self.clubMass = self.__ui.clubheadMassSpinBox.value() / 1000.
+        self.clubE = self.__ui.clubheadESpinBox.value()
         self.cd = self.__ui.cdSpinBox.value()
         self.liftFactor = self.__ui.factorSpinBox.value()
         self.mu = self.__ui.muSpinBox.value()
         self.wind_speed = self.__ui.windSpeedSpinBox.value()
         self.wind_dir = self.__ui.windDirSpinBox.value()
 
+        v_club = self.__ui.clubheadVelocitySpinBox.value() * .44704
+
         traj = [QtGui.QVector3D(0.0, 0.0, 0.0)]
 
         moment_chg = self.force * self.contact_t
         v0 = moment_chg / self.mass 
         launch_angle = math.radians(self.angle)
+        horiz_angle = math.radians(0)
+
+        # ----
+        faceToPath = self.faceAngle - self.pathAngle
+        phi = math.acos(math.cos(math.radians(faceToPath))*math.cos(math.radians(self.loft)))
+        propFactor = 0.96 - 0.0071*math.degrees(phi)
+        #launch_angle = phi*propFactor
+        day = propFactor*self.loft
+        dax = propFactor*faceToPath
+        lay = math.radians(day + self.aoa)
+        lax = math.radians(dax + self.pathAngle)
+        v_ball = v_club*(1.+self.clubE)/(1.+self.mass/self.clubMass)*math.cos(phi)
+
+        s = 160.*(v_club/.44704)*math.sin(phi)
 
         print("init: ")
-        print(v0, math.degrees(launch_angle), self.spin)
-        (hit_angle, v, cur_spin, carry, height) = self.__launch(traj, v0, launch_angle, self.spin, self.side_spin, \
+        print(v0/.44704, v0, math.degrees(launch_angle), self.spin)
+        print(v_ball/.44704, v_ball, math.degrees(lay), math.degrees(lax), s)
+
+        #(hit_angle, v, cur_spin, carry, height) = self.__launch(traj, v0, launch_angle, horiz_angle, self.spin, self.side_spin, \
+        #       self.wind_speed, self.wind_dir)
+        (hit_angle, v, cur_spin, carry, height) = self.__launch(traj, v_ball, lay, lax, s, self.side_spin, \
                 self.wind_speed, self.wind_dir)
-        print("hit: ")
-        print(v, math.degrees(hit_angle), cur_spin)
-        hit_angle_from_horiz = (math.pi/2.) + hit_angle
-        (rebound_angle, v2, new_spin) = self.__bounce3(v, hit_angle_from_horiz, cur_spin)
-        print("1st bounce: ")
-        print(v2, math.degrees(rebound_angle), new_spin)
-        rebound_from_horiz = (math.pi/2.) - rebound_angle
-        (hit_angle, v, cur_spin, x, y) = self.__launch(traj, v2, rebound_from_horiz, new_spin, lift=False, drag=False)#, False, False)
-        hit_angle_from_horiz = (math.pi/2.) + hit_angle
-        (rebound_angle, v2, new_spin) = self.__bounce3(v, hit_angle_from_horiz, cur_spin)
-        rebound_from_horiz = (math.pi/2.) - rebound_angle
-        (hit_angle, v, cur_spin, x, y) = self.__launch(traj, v2, rebound_from_horiz, new_spin, lift=False, drag=False)
+        # print("hit: ")
+        # print(v, math.degrees(hit_angle), cur_spin)
+        # hit_angle_from_horiz = (math.pi/2.) + hit_angle
+        # (rebound_angle, v2, new_spin) = self.__bounce3(v, hit_angle_from_horiz, cur_spin)
+        # print("1st bounce: ")
+        # print(v2, math.degrees(rebound_angle), new_spin)
+        # rebound_from_horiz = (math.pi/2.) - rebound_angle
+        # (hit_angle, v, cur_spin, x, y) = self.__launch(traj, v2, rebound_from_horiz, horiz_angle, new_spin, lift=False, drag=False)#, False, False)
+        # hit_angle_from_horiz = (math.pi/2.) + hit_angle
+        # (rebound_angle, v2, new_spin) = self.__bounce3(v, hit_angle_from_horiz, cur_spin)
+        # rebound_from_horiz = (math.pi/2.) - rebound_angle
+        # (hit_angle, v, cur_spin, x, y) = self.__launch(traj, v2, rebound_from_horiz, horiz_angle, new_spin, lift=False, drag=False)
         
         # (rebound_angle, v2, new_spin) = self.__bounce(v, -hit_angle, cur_spin)
 
@@ -148,42 +173,6 @@ class MainController(object):
         # (rebound_angle, v2, new_spin) = self.__bounce3(23.8, math.radians(34.0), wr)
 
         return traj
-
-    def __bounce2(self, v, in_angle, spin_rate):
-        e = .120
-        angle = in_angle #(math.pi/2) - in_angle
-        #print(math.degrees(in_angle), math.degrees(angle))
-        vy = v * math.cos(angle)
-        vx = v * math.sin(angle)
-        if v <= 20:
-            e = .510 - .0375*vy + .000903*vy*vy
-
-        print (e, v, vx, vy)
-        
-        mu = self.mu 
-
-        f = math.sqrt(1-e)
-        uy = -f*vy
-
-        vcx = vx + spin_rate*self.radius    # tangential contact speed
-        if abs(vcx) <= 2.5*mu*(1+f)*abs(vy):
-            # Within friction limit, sticky contact.
-            ux = vx - 0.4*vcx
-            wout = spin_rate - 0.6*vcx/self.radius
-        else:
-            # Exceeds friction limit, skidding contact.
-            sign_vcx = (-1 if vcx < 0 else 1)
-            pom = mu*(1+f)*abs(vy) * sign_vcx
-            dvcx = 2.5*pom
-            ux = vx - 0.4*dvcx
-            wout = spin_rate - 0.6*dvcx/self.radius
-
-        fc = abs(vcx) / (2.5*(1+f)*abs(vy)) if vy != 0 else 1000
-
-        rebound_angle = -math.atan(ux/uy)
-        v2 = math.sqrt(ux * ux + uy * uy)
-
-        return rebound_angle, v2, -wout
 
     def __bounce3(self, vi, in_angle, spin_rate):
         mu = self.mu
@@ -266,19 +255,28 @@ class MainController(object):
 
         return c_d
 
-    def __launch(self, traj, v0, angle, spin_rate, side_spin_rate=0, 
+    def __launch(self, traj, v0, angle, h_angle, spin_rate, side_spin_rate=0, 
             wind_speed=0, wind_dir=0, lift=True, drag=True):
         x = traj[-1].x()
         y = traj[-1].y()
         z = traj[-1].z()  
 
         spin0 = 2.*math.pi*spin_rate/60.  
-        spin_s0 = 2.*math.pi*side_spin_rate/60.
+        #spin_s0 = 2.*math.pi*side_spin_rate/60.
 
-        v0x = v0 * math.cos(angle)
-        v0y = v0 * math.sin(angle)
-        v0z = 0
+        tan2lax = math.pow(math.tan(h_angle), 2)
+        tan2lay = math.pow(math.tan(angle), 2)
 
+        vx2 = v0*v0 / (1.+tan2lax+tan2lay)
+        v0x = math.sqrt(vx2)
+        v0y = v0x*math.tan(angle)
+        v0z = v0x*math.tan(h_angle)
+
+        # v0x = v0 * math.cos(angle)
+        # v0y = v0 * math.sin(angle)
+        # v0z = v0 * math.sin(h_angle)
+        print(v0x, v0y, v0z)
+        #return
         a0x = 0
         a0y = self.gravity
         a0z = 0
@@ -293,7 +291,9 @@ class MainController(object):
 
         t = 0
         spin_t = spin0
-        spin_s_t = spin_s0
+        #spin_s_t = spin_s0
+        #d = spin_s_t / spin_t
+        #total_spin = spin_t * math.sqrt(1 + (d*d))
 
         y_max = 0
         in_air = True
@@ -302,6 +302,7 @@ class MainController(object):
         if wind_speed != 0:
             n = 0.37 - 0.0881 * math.log(wind_speed, math.e)
         z1 = 10 # measured at 10m above ground
+        v = 0
 
         while in_air:
             wind_v2 = math.pow((y/z1), n) * wind_speed 
@@ -326,12 +327,15 @@ class MainController(object):
             Re = (self.air_density * (v+wind_v) * (self.radius + self.radius))/self.air_visc
             
             spin_t = spin0-(.00002)*(spin_t*(v+wind_v)/self.radius)*t
-            spin_s_t = spin_s0-(.00002)*(spin_s_t*(v+wind_v)/self.radius)*t
-                
+            #spin_s_t = spin_s0-(.00002)*(spin_s_t*(v+wind_v)/self.radius)*t
+            #d = spin_s_t / spin_t
+            #total_spin = spin_t * math.sqrt(1 + (d*d))
+            #spin_angle = math.atan(spin_s_t/spin_t)
+
             #print(Re)
             #spin_t = spin0 * math.exp(-t/30.)
             spin_ratio = abs(float(self.radius*spin_t/(v+wind_v)))
-            spin_s_ratio = abs(float(self.radius*spin_s_t/(v+wind_v)))
+            #spin_s_ratio = abs(float(self.radius*spin_s_t/(v+wind_v)))
 
             f_drag_lift = .5 * self.air_density*self.ball_xsect*(v2+wind_v2)
         
@@ -343,29 +347,34 @@ class MainController(object):
 
             accel_dragx = accel_drag * math.cos(angle) / self.mass
             accel_dragy = accel_drag * math.sin(angle) / self.mass
-            accel_dragz = 0
+            #accel_dragx2 = accel_drag * math.cos(h_angle) / self.mass
+            accel_dragz = accel_drag * math.sin(h_angle) / self.mass
 
             c_lift = -.05+math.sqrt(.0025+self.liftFactor*spin_ratio)
-            c_s_lift = -.05+math.sqrt(.0025+self.liftFactor*spin_s_ratio)
-            print (">", c_s_lift)
+            #c_s_lift = -.05+math.sqrt(.0025+self.liftFactor*spin_s_ratio)
+            #print (">", c_s_lift, accel_dragz)
             #c_lift = -3.25*spin_ratio*spin_ratio + 1.99*spin_ratio
             
             accel_lift = f_drag_lift * c_lift #/ self.mass
-            accel_s_lift = f_drag_lift * c_s_lift
+            #accel_s_lift = f_drag_lift * c_s_lift
 
             if spin_rate < 0:
                 accel_lift = 0 - accel_lift
 
-            if side_spin_rate < 0:
-                accel_s_lift = 0 - accel_s_lift
+            #if side_spin_rate < 0:
+            #    accel_s_lift = 0 - accel_s_lift
 
             if not lift:
                 accel_lift = 0
 
             accel_liftx = accel_lift * math.cos(angle) / self.mass
             accel_lifty = accel_lift * math.sin(angle) / self.mass
-            accel_liftz = accel_s_lift / self.mass
-            print(accel_liftz)
+            #accel_liftx2 = accel_s_lift * math.cos(h_angle) / self.mass
+            accel_liftz = accel_lift * math.sin(h_angle) / self.mass
+            # accel_liftx = accel_lift * math.cos(angle) / self.mass
+            # accel_lifty = accel_lift * math.cos(spin_angle) / self.mass
+            # accel_liftz = accel_lift * math.sin(spin_angle) / self.mass
+            #print(accel_liftz)
             ax = a0x - accel_dragx - accel_lifty
             ay = a0y - accel_dragy + accel_liftx
             az = a0z - accel_dragz - accel_liftz
@@ -394,7 +403,10 @@ class MainController(object):
             if dx == 0:
                 dx = 0.00001
 
+            d = math.sqrt(dx*dx + dy*dy + dz*dz)
             angle = math.atan(dy/dx)
+            h_angle = math.asin(dz/d)
+            #print(h_angle)
 
             traj.append(QtGui.QVector3D(x, y, z))
             
@@ -406,5 +418,6 @@ class MainController(object):
         dist = x - dist
         print ("distance: ", dist, "max height:", y_max)
         print ("spin0: ", spin0, "final spin:", spin_t)
+        print ("side distance: ", z)
 
         return angle, v, spin_t*60./(2.*math.pi), dist, y_max
