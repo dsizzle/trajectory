@@ -57,6 +57,9 @@
        </item>
        <item>
         <widget class="QDoubleSpinBox" name="angleSpinBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="maximum">
           <double>90.000000000000000</double>
          </property>
@@ -116,6 +119,9 @@
        </item>
        <item>
         <widget class="QDoubleSpinBox" name="forceSpinBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="maximum">
           <double>10000.000000000000000</double>
          </property>
@@ -137,6 +143,9 @@
        </item>
        <item>
         <widget class="QDoubleSpinBox" name="spinSpinBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="decimals">
           <number>0</number>
          </property>
@@ -306,7 +315,7 @@
        <item>
         <widget class="QDoubleSpinBox" name="faceAngleSpinBox">
          <property name="decimals">
-          <number>0</number>
+          <number>2</number>
          </property>
          <property name="minimum">
           <double>-45.000000000000000</double>
