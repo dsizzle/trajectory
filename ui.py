@@ -8,10 +8,11 @@ import main_ui
 #import view.paper
 
 #trajectoware: .205, .425  t/30
-#                .201, .422 t/20
+#                .202, .424 t/20
 
 clubs = {
     # force, launch angle, spin, cd, factor, clubhead speed, aoa, loft, clubhead mass, clubhead e, 
+    "Driver-t" : [6854, 10.9, 2686, .202, .424, 113, -1.3, 8.55, 205, .830],  # .197, .084],  #     275, 32      loft should be 10    
     "Driver" : [6854, 10.9, 2686, .228, .667, 113, -1.3, 8.55, 205, .830],  # .197, .084],  #     275, 32      loft should be 10    
     "3-wood" : [6485,  9.2, 3655, .260, .524, 107, -2.9, 12.33, 218, .830],  # .247, .159],  #     243, 30   loft should be 15
     "5-wood" : [6238,  9.4, 4350, .272, .446, 103, -3.3, 15.3, 234.5, .830],  # .268, .187],  #     230, 31  loft should be 19
@@ -25,7 +26,7 @@ clubs = {
     "PWedge" : [4186, 24.2, 9304, .354, .257,  83, -5.0, 44.5, 750.0, .830],  # .347, .124],  #     136, 29
 }
 
-club_order = ["Driver", "3-wood", "5-wood", \
+club_order = ["Driver-t", "Driver", "3-wood", "5-wood", \
     "3-iron", "4-iron", "5-iron", "6-iron", "7-iron", "8-iron", "9-iron", \
     "PWedge"]
 
