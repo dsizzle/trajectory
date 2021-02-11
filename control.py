@@ -131,8 +131,8 @@ class MainController(object):
         s = 160.*(v_club/.44704)*math.sin(phi)
 
         # 4 for woods, 2 for irons
-        spin_angle5 = 2 * math.radians(faceToPath)
-        spin_angle3 = 4 * math.radians(faceToPath) 
+        spin_angle5 = 4 * math.radians(faceToPath)
+        spin_angle3 = math.atan(math.tan(math.radians(faceToPath))/math.tan(4.*math.radians(self.loft)))
         spin_angle = .55 * math.tan(math.radians(faceToPath))/math.tan(math.radians(self.loft))
         
         print("spin_angle", spin_angle, "spin_angle3", spin_angle3, "spin_angle5", spin_angle5)
@@ -146,8 +146,8 @@ class MainController(object):
                 self.wind_speed, self.wind_dir)
         # print("hit: ")
         # print(v, math.degrees(hit_angle), cur_spin)
-        #hit_angle_from_horiz = (math.pi/2.) + hit_angle
-        #(rebound_angle, v2, new_spin) = self.__bounce3(v, hit_angle_from_horiz, cur_spin, horiz_angle)
+        hit_angle_from_horiz = (math.pi/2.) + hit_angle
+        (rebound_angle, v2, new_spin) = self.__bounce3(v, hit_angle_from_horiz, cur_spin, horiz_angle)
         # print("1st bounce: ")
         # print(v2, math.degrees(rebound_angle), new_spin)
         #rebound_from_horiz = (math.pi/2.) - rebound_angle
@@ -214,8 +214,8 @@ class MainController(object):
         print ("vixp", "viyp", "theta_c")
         print (vixp, viyp, math.degrees(theta_c))
 
-        print ("wi", "r")
-        print (wi, self.radius)
+        print ("wi", "r", "wi-crit")
+        print (wi, self.radius, (5.*vixp)/(2.*self.radius))
 
         print ("e", "mu", "mu_c")
         print (e, mu, mu_c)
@@ -249,7 +249,7 @@ class MainController(object):
         print("bounce distance:", (2./-self.gravity)*vrx*vry)
         return rebound_angle, v2, new_spin
 
-    def __drag(self, Re, S=0):
+    def __drag(self, Re, S=0, base_cd=.2136):
         Re_cr = 0.6e5
         c_d1 = 0.25
         c_d3 = 0.1e-3
@@ -262,7 +262,7 @@ class MainController(object):
         else:
             D_Re = k2 + c_d1*k2 - 0.0225*c_d2 - 1
 
-        c_d = .2136 * (-2.1 * math.exp(-.12*(D_Re + S + 0.35)) + \
+        c_d = base_cd * (-2.1 * math.exp(-.12*(D_Re + S + 0.35)) + \
                 8.9 * math.exp(-.22*(D_Re + 0.35)))
 
         return c_d
@@ -344,12 +344,17 @@ class MainController(object):
             f_drag_lift = .5 * self.air_density*self.ball_xsect*(v2+wind_v2)
         
             c_drag = 21.12/Re + 6.3/math.sqrt(Re) + self.cd
+            c_drag = self.__drag(Re, spin_t, self.cd)
             accel_drag = f_drag_lift * c_drag #/ self.mass
 
             if not drag:
                 accel_drag = 0
 
-            accel_dragx = (accel_drag * math.cos(angle)-accel_drag*math.sin(h_angle)) / self.mass
+            sign = 1
+            if spin_angle < 0:
+                sign = -1
+
+            accel_dragx = (accel_drag * math.cos(angle)+(sign*accel_drag*math.sin(h_angle))) / self.mass
             accel_dragy = accel_drag * math.sin(angle) / self.mass
             accel_dragz = accel_drag * math.sin(h_angle) / self.mass
 
@@ -371,12 +376,9 @@ class MainController(object):
             if spin_rate < 0:
                 accel_lift = 0 - accel_lift
 
-            if spin_angle < 0:
-                accel_lift_s = 0 - accel_lift_s
-
-            alx = accel_lift*math.cos(angle)-accel_lift_s*math.sin(h_angle)
+            alx = accel_lift*math.cos(angle)+(sign*accel_lift_s*math.sin(h_angle))
             aly = accel_lift*math.sin(angle)
-            alz = accel_lift_s*math.cos(h_angle)
+            alz = (sign*accel_lift_s*math.cos(h_angle))
 
             accel_liftx = alx / self.mass #accel_lift * math.cos(angle) / self.mass
             accel_lifty = aly / self.mass #accel_lift * math.sin(angle) / self.mass
